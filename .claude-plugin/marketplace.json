@@ -1,0 +1,13 @@
+{
+  "name": "violet-circuit",
+  "owner": {
+    "name": "Shmulik Dorinbaum"
+  },
+  "plugins": [
+    {
+      "name": "violet-circuit",
+      "source": "./"
+    }
+  ],
+  "description": "Violet Circuit, a dark neon violet theme for the Claude Code desktop app."
+}
