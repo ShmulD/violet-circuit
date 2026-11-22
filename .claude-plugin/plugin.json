@@ -1,7 +1,7 @@
 {
   "name": "violet-circuit",
-  "version": "0.1.0",
-  "description": "Dark purple tech theme for the Claude Code desktop app: neon violet palette, live circuit grid backdrop, chamfered message cards and a soft synth sound.",
+  "version": "0.2.0",
+  "description": "Neon violet tech theme for the Claude Code desktop app, in dark and light modes: violet palette, live circuit grid backdrop, chamfered message cards and a soft synth sound.",
   "author": { "name": "Shmulik Dorinbaum", "url": "https://www.shmul.co.il/" },
   "homepage": "https://www.shmul.co.il/violet-circuit/",
   "license": "MIT"

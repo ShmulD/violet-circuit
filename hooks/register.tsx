@@ -1,12 +1,15 @@
-import type { Register, ThemeMessageRule, ThemeSetArgs, ThemeSound, ThemeStyle } from 'claude-code'
+import type { EngineInterface, Register, ThemeMessageRule, ThemeSetArgs, ThemeSound, ThemeStyle } from 'claude-code'
 
 import { makeColors } from './make-colors.js'
 import { SCENE } from './scene.js'
 
-// Violet Circuit: a dark, neon violet tech look for the whole desktop app.
+// Violet Circuit: a neon violet tech look for the whole desktop app, in two
+// modes. Dark is deep violet space; light is pale lavender with the same neon.
+// By default it follows the app's own light or dark mode; the person can pin
+// one mode from the right-click menu or with /violet.
+
 const { theme, problems } = makeColors({
   label: 'Violet Circuit',
-  only: 'dark',
   roles: {
     accent: '#a855f7',
     danger: '#f43f5e',
@@ -15,6 +18,34 @@ const { theme, problems } = makeColors({
     pro: '#22d3ee',
   },
   codeTheme: { dark: 'dracula' },
+  light: {
+    roles: {
+      accent: '#7c3aed',
+      danger: '#e11d48',
+      success: '#059669',
+      warning: '#b45309',
+      pro: '#0891b2',
+    },
+    gray: {
+      anchors: {
+        'surface-0': '#ebe5f8',
+        'surface-1': '#f3effc',
+        'surface-2': '#faf8ff',
+        'text-primary': '#1a1030',
+        'text-secondary': '#3b2d5e',
+        'text-muted': '#5a4c80',
+      },
+    },
+    git: {
+      added: '#059669',
+      removed: '#e11d48',
+      modified: '#b45309',
+      merged: '#7c3aed',
+      closed: '#e11d48',
+      conflicting: '#c2410c',
+      draft: '#5a4c80',
+    },
+  },
   dark: {
     gray: {
       anchors: {
@@ -39,7 +70,14 @@ const { theme, problems } = makeColors({
   },
 })
 
-// Message colors with no style rule, so plain rows match too.
+// Message colors per mode, so the cards below follow light and dark.
+theme.inputs.light = {
+  ...theme.inputs.light,
+  'bg-user-message': '#efe6ff',
+  'text-user-message': '#1a1030',
+  'bg-assistant-message': '#ffffff',
+  'text-assistant-message': '#1a1030',
+}
 theme.inputs.dark = {
   ...theme.inputs.dark,
   'bg-user-message': '#1e1238',
@@ -50,28 +88,28 @@ theme.inputs.dark = {
 
 // A chamfered card with a neon outline and corner brackets.
 const chamfer: ThemeMessageRule = {
-  color: '#f3edff',
-  backgroundColor: '#1e1238',
+  color: 'text-user-message',
+  backgroundColor: 'bg-user-message',
   paddingX: 18,
   paddingY: 14,
-  shadow: { y: 0, blur: 18, color: '#7c3aed55' },
+  shadow: { y: 0, blur: 18, color: '#7c3aed40' },
   fill: {
     vector: {
       viewBox: 64,
       slice: 14,
       paths: [
-        { d: 'M10 0H64V54L54 64H0V10Z', color: '#1e1238' },
-        { d: 'M10 0.75H63.25V53.7L53.7 63.25H0.75V10.3Z', strokeWidth: 1.5, color: '#9b5cf6' },
-        { d: 'M3 12V3H12', strokeWidth: 2, color: '#e9d5ff' },
-        { d: 'M61 52V61H52', strokeWidth: 2, color: '#67e8f9' },
+        { d: 'M10 0H64V54L54 64H0V10Z', color: 'bg-user-message' },
+        { d: 'M10 0.75H63.25V53.7L53.7 63.25H0.75V10.3Z', strokeWidth: 1.5, color: 'fill-accent' },
+        { d: 'M3 12V3H12', strokeWidth: 2, color: 'text-accent' },
+        { d: 'M61 52V61H52', strokeWidth: 2, color: 'text-pro' },
       ],
     },
   },
 }
 
 const reply: ThemeMessageRule = {
-  color: '#ece4ff',
-  backgroundColor: '#110a20',
+  color: 'text-assistant-message',
+  backgroundColor: 'bg-assistant-message',
   radius: [2, 14, 14, 2],
   paddingX: 18,
   paddingY: 12,
@@ -79,27 +117,27 @@ const reply: ThemeMessageRule = {
     gradient: {
       angle: 90,
       stops: [
-        { at: 0, color: '#8b5cf6' },
-        { at: 0.006, color: '#8b5cf6' },
-        { at: 0.007, color: '#150c28' },
-        { at: 1, color: '#0f091d' },
+        { at: 0, color: 'fill-accent' },
+        { at: 0.006, color: 'fill-accent' },
+        { at: 0.007, color: 'bg-assistant-message' },
+        { at: 1, color: 'bg-assistant-message' },
       ],
     },
   },
-  borderColor: '#2a1a4d',
+  borderColor: 'border',
   borderWidth: 1,
 }
 
 const STYLE: ThemeStyle = {
   Text: { fontFamily: ['sans'], fontSize: 15, lineHeight: 24 },
-  Heading: { fontFamily: ['mono'], color: '#d8b4fe', letterSpacing: 1, fontWeight: 'semibold' },
+  Heading: { fontFamily: ['mono'], color: 'text-accent', letterSpacing: 1, fontWeight: 'semibold' },
   UserMessage: chamfer,
   AssistantMessage: reply,
   ToolUse: {
-    color: '#c4b5fd',
+    color: 'text-accent',
     fontFamily: ['code'],
-    backgroundColor: '#0e0919',
-    borderColor: '#3b2566',
+    backgroundColor: 'surface-1',
+    borderColor: 'border',
     borderWidth: 1,
     radius: 6,
     paddingX: 10,
@@ -129,10 +167,52 @@ const SOUND: ThemeSound = {
   },
 }
 
-const BASE: ThemeSetArgs = {
-  colors: theme,
-  overrideColorScheme: 'dark',
-  backdrop: { scene: 'violet-circuit', glass: { blur: 22, tint: '#0d0819', opacity: 0.72 } },
+type Mode = 'auto' | 'light' | 'dark'
+
+const MODE_KEY = 'mode'
+const MODES: readonly Mode[] = ['auto', 'light', 'dark']
+const MODE_NAME: Record<Mode, string> = {
+  auto: 'follows the app (light or dark)',
+  light: 'light',
+  dark: 'dark',
+}
+
+function look(mode: Mode): ThemeSetArgs {
+  return {
+    colors: theme,
+    // The glass takes each mode's own panel color, so it suits light and dark.
+    backdrop: { scene: 'violet-circuit', glass: { blur: 22, opacity: 0.72 } },
+    ...(mode === 'auto' ? {} : { overrideColorScheme: mode }),
+  }
+}
+
+function asMode(value: unknown): Mode {
+  return MODES.includes(value as Mode) ? (value as Mode) : 'auto'
+}
+
+async function apply($: EngineInterface, mode: Mode): Promise<void> {
+  const base = look(mode)
+  let set
+  try {
+    set = await $.theme.set({ ...base, style: STYLE, sound: SOUND })
+  } catch (error) {
+    $.ui.log(String(error))
+    try {
+      set = await $.theme.set({ ...base, style: STYLE })
+    } catch (error2) {
+      $.ui.log(String(error2))
+      set = await $.theme.set(base)
+    }
+  }
+  if (!set.isDrawn) {
+    $.ui.status(set.reason)
+  }
+}
+
+async function choose($: EngineInterface, mode: Mode): Promise<string> {
+  await $.store.set(MODE_KEY, mode)
+  await apply($, mode)
+  return `Violet Circuit: ${MODE_NAME[mode]}.`
 }
 
 export const register: Register = on => {
@@ -141,24 +221,59 @@ export const register: Register = on => {
     if (unpainted !== undefined) {
       $.ui.toast(unpainted)
     }
-
-    let set
-    try {
-      set = await $.theme.set({ ...BASE, style: STYLE, sound: SOUND })
-    } catch (error) {
-      $.ui.log(String(error))
-      try {
-        set = await $.theme.set({ ...BASE, style: STYLE })
-      } catch (error2) {
-        $.ui.log(String(error2))
-        set = await $.theme.set(BASE)
-      }
-    }
-
-    if (!set.isDrawn) {
-      $.ui.status(set.reason)
-    }
+    await $.command.register({
+      name: 'violet',
+      description: 'Violet Circuit mode: /violet dark, /violet light or /violet auto (follow the app)',
+    })
+    await apply($, asMode(await $.store.get(MODE_KEY)))
     return next(e)
+  })
+
+  on('command.run', { command: 'violet' }, async ($, e) => {
+    const asked = e.args.trim().toLowerCase()
+    const current = asMode(await $.store.get(MODE_KEY))
+    // With no word, flip between dark and light.
+    const mode: Mode = MODES.includes(asked as Mode)
+      ? (asked as Mode)
+      : current === 'dark' ? 'light' : 'dark'
+    return { text: await choose($, mode), isTextDisplayOnly: true }
+  })
+
+  // The switch: rows in the desktop app's right-click menu.
+  on('ui.render', { component: 'ContextMenu' }, async ($, e, next) => {
+    if (e.surface !== 'desktop') {
+      return next(e)
+    }
+    const current = asMode(await $.store.get(MODE_KEY))
+    const { Box, Button } = $.ui.resolve(e)
+    const pick = (mode: Mode) => {
+      void choose($, mode).then(text => $.ui.toast(text))
+    }
+    const rows = [
+      current !== 'dark' && (
+        <Button key="vc-dark" onPress={() => pick('dark')}>
+          Violet Circuit: dark mode
+        </Button>
+      ),
+      current !== 'light' && (
+        <Button key="vc-light" onPress={() => pick('light')}>
+          Violet Circuit: light mode
+        </Button>
+      ),
+      current !== 'auto' && (
+        <Button key="vc-auto" onPress={() => pick('auto')}>
+          Violet Circuit: follow the app
+        </Button>
+      ),
+    ]
+    const mine = <Box flexDirection="column">{rows}</Box>
+    const theirs = await next(e)
+    return (
+      <Box flexDirection="column">
+        {theirs}
+        {mine}
+      </Box>
+    )
   })
 
   on('ui.render', { component: 'Backdrop' }, ($, e, next) => {
